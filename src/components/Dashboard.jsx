@@ -54,6 +54,7 @@ const buildDashboardSeed = () => {
       id: noteId,
       title: entry.title || 'Untitled Note',
       content: entry.content || '',
+      path: entry.path || '',
       folderId,
       createdAt: exportedAt,
       updatedAt: exportedAt,

@@ -3,6 +3,64 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Link as LinkIcon } from 'lucide-react';
 
+const getNotePath = (note) => note.path || note.id || note.title || '';
+
+const buildInvertedIndex = (notes) => {
+  const index = new Map();
+  notes.forEach((note) => {
+    const relativePath = getNotePath(note);
+    const normalizedPath = relativePath.replace(/\\/g, '/');
+    const parts = normalizedPath.split('/');
+    const filename = parts.pop();
+    const dir = parts.length ? parts.join('/') : '.';
+
+    if (!filename) return;
+
+    if (!index.has(filename)) {
+      index.set(filename, []);
+    }
+    index.get(filename).push(dir);
+  });
+  return index;
+};
+
+const labelToPath = (invertedIndex, label) => {
+  const [rawLabel] = label.split('|', 1);
+  const extensionMatch = rawLabel.match(/\.[^/.]+$/);
+  const hasExtension = Boolean(extensionMatch);
+  const file = hasExtension ? rawLabel : `${rawLabel}.md`;
+
+  const normalizedFile = file.replace(/\\/g, '/');
+  const parts = normalizedFile.split('/');
+  const filename = parts.pop();
+  const dir = parts.join('/');
+
+  if (!filename || !invertedIndex.has(filename)) {
+    return null;
+  }
+
+  if (!dir) {
+    const paths = invertedIndex.get(filename);
+    if (!paths || paths.length !== 1) {
+      return null;
+    }
+    const path = paths[0] === '.' ? '' : paths[0];
+    return path ? `${path}/${filename}` : filename;
+  }
+
+  return filename;
+};
+
+const extractWikiLinks = (content) => {
+  const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
+  const links = [];
+  let match;
+  while ((match = wikiLinkRegex.exec(content)) !== null) {
+    links.push(match[1]);
+  }
+  return links;
+};
+
 const KnowledgeGraph = ({ notes, onNoteSelect }) => {
   const canvasRef = useRef(null);
   const [nodes, setNodes] = useState([]);
@@ -10,8 +68,7 @@ const KnowledgeGraph = ({ notes, onNoteSelect }) => {
   const [hoveredNode, setHoveredNode] = useState(null);
 
   useEffect(() => {
-    // Parse WikiLinks and create graph data
-    const graphNodes = notes.map((note, index) => ({
+    const graphNodes = notes.map((note) => ({
       id: note.id,
       title: note.title,
       x: Math.random() * 600 + 100,
@@ -20,25 +77,36 @@ const KnowledgeGraph = ({ notes, onNoteSelect }) => {
       vy: 0,
     }));
 
-    const graphLinks = [];
-    const noteMap = new Map(notes.map(n => [n.title.toLowerCase(), n.id]));
+    const invertedIndex = buildInvertedIndex(notes);
+    const notePathMap = new Map(
+      notes.map((note) => [getNotePath(note).replace(/\\/g, '/'), note.id])
+    );
 
-    notes.forEach(note => {
-      // Extract WikiLinks [[Note Title]]
-      const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
-      let match;
-      
-      while ((match = wikiLinkRegex.exec(note.content)) !== null) {
-        const linkedTitle = match[1].toLowerCase();
-        const targetId = noteMap.get(linkedTitle);
-        
+    const graphLinks = [];
+
+    notes.forEach((note) => {
+      const links = extractWikiLinks(note.content || '');
+      links.forEach((label) => {
+        const resolvedPath = labelToPath(invertedIndex, label);
+        if (!resolvedPath) return;
+
+        const normalizedPath = resolvedPath.replace(/\\/g, '/');
+        let targetId = notePathMap.get(normalizedPath);
+
+        if (!targetId) {
+          const fallbackNote = notes.find((candidate) =>
+            getNotePath(candidate).endsWith(`/${normalizedPath}`)
+          );
+          targetId = fallbackNote?.id;
+        }
+
         if (targetId && targetId !== note.id) {
           graphLinks.push({
             source: note.id,
             target: targetId,
           });
         }
-      }
+      });
     });
 
     setNodes(graphNodes);
