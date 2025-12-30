@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
@@ -11,6 +11,16 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import { Save, Plus, Circle, Square, Diamond, MousePointer2 } from 'lucide-react';
 import BiblePanel from '@/components/BiblePanel';
@@ -29,6 +39,43 @@ const SermonMapContent = ({ note, onSave }) => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState(null);
+
+  const editableNodeTypes = useMemo(() => new Set(['process', 'verse']), []);
+
+  const getDefaultCardStyle = useCallback((type) => {
+    if (type === 'verse') {
+      return {
+        fontFamily: 'serif',
+        fontWeight: 500,
+        textColor: '#92400e',
+        cardColor: '#fffdf5',
+        width: 288,
+        height: 120,
+      };
+    }
+    return {
+      fontFamily: 'serif',
+      fontWeight: 500,
+      textColor: '#334155',
+      cardColor: '#ffffff',
+      width: 180,
+      height: 80,
+    };
+  }, []);
+
+  const selectedNode = useMemo(
+    () => nodes.find((node) => node.id === selectedNodeId) || null,
+    [nodes, selectedNodeId]
+  );
+
+  const selectedCardStyle = useMemo(() => {
+    if (!selectedNode) return getDefaultCardStyle('process');
+    return {
+      ...getDefaultCardStyle(selectedNode.type),
+      ...(selectedNode.data?.style || {}),
+    };
+  }, [selectedNode, getDefaultCardStyle]);
 
   // Load initial data
   useEffect(() => {
@@ -101,14 +148,13 @@ const SermonMapContent = ({ note, onSave }) => {
       };
 
       if (verseDataString) {
-        // Handle Bible Verse Drop
+        // Handle Bible Verse Drop (as Process Card)
         try {
           const verse = JSON.parse(verseDataString);
-          newNode.type = 'verse';
-          newNode.data = { 
-            label: verse.ref, 
-            ref: verse.ref, 
-            text: verse.text 
+          newNode.type = 'process';
+          newNode.data = {
+            label: `${verse.ref}\n${verse.text}`,
+            style: getDefaultCardStyle('process'),
           };
           toast({
             title: "Verse Added",
@@ -122,13 +168,14 @@ const SermonMapContent = ({ note, onSave }) => {
         // Handle Shape Drop
         newNode.type = type;
         newNode.data = { 
-          label: type === 'start' ? 'Start' : type === 'decision' ? 'Question?' : 'New Point' 
+          label: type === 'start' ? 'Start' : type === 'decision' ? 'Question?' : 'New Point',
+          ...(type === 'process' ? { style: getDefaultCardStyle('process') } : {}),
         };
       }
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, getDefaultCardStyle]
   );
 
   const handleSave = (silent = false) => {
@@ -148,6 +195,27 @@ const SermonMapContent = ({ note, onSave }) => {
   const onDragStart = (event, nodeType) => {
     event.dataTransfer.setData('application/reactflow/type', nodeType);
     event.dataTransfer.effectAllowed = 'move';
+  };
+
+  const updateSelectedNodeStyle = (updates) => {
+    if (!selectedNodeId) return;
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id !== selectedNodeId) return node;
+        const baseStyle = getDefaultCardStyle(node.type);
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            style: {
+              ...baseStyle,
+              ...(node.data?.style || {}),
+              ...updates,
+            },
+          },
+        };
+      })
+    );
   };
 
   return (
@@ -186,6 +254,114 @@ const SermonMapContent = ({ note, onSave }) => {
             <MousePointer2 className="w-3 h-3" /> Drag shapes to canvas
           </p>
         </div>
+
+        <div className="p-4 border-b border-slate-100">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Card Editor</h3>
+          {!selectedNode && (
+            <p className="text-xs text-slate-400">
+              Select a card in the flow to customize its style.
+            </p>
+          )}
+          {selectedNode && !editableNodeTypes.has(selectedNode.type) && (
+            <p className="text-xs text-slate-400">
+              Card styling is available for process and verse cards.
+            </p>
+          )}
+          {selectedNode && editableNodeTypes.has(selectedNode.type) && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs text-slate-600">Font Style</Label>
+                <Select
+                  value={selectedCardStyle.fontFamily}
+                  onValueChange={(value) => updateSelectedNodeStyle({ fontFamily: value })}
+                >
+                  <SelectTrigger className="h-8 bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="serif">Serif</SelectItem>
+                    <SelectItem value="sans-serif">Sans Serif</SelectItem>
+                    <SelectItem value="monospace">Monospace</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-slate-600">Font Weight</Label>
+                <Select
+                  value={`${selectedCardStyle.fontWeight}`}
+                  onValueChange={(value) => updateSelectedNodeStyle({ fontWeight: Number(value) })}
+                >
+                  <SelectTrigger className="h-8 bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="400">Regular</SelectItem>
+                    <SelectItem value="500">Medium</SelectItem>
+                    <SelectItem value="600">Semibold</SelectItem>
+                    <SelectItem value="700">Bold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-600">Text Color</Label>
+                  <Input
+                    type="color"
+                    value={selectedCardStyle.textColor}
+                    onChange={(event) => updateSelectedNodeStyle({ textColor: event.target.value })}
+                    className="h-8 p-1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-600">Card Color</Label>
+                  <Input
+                    type="color"
+                    value={selectedCardStyle.cardColor}
+                    onChange={(event) => updateSelectedNodeStyle({ cardColor: event.target.value })}
+                    className="h-8 p-1"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-slate-600">Card Width</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider
+                      value={[selectedCardStyle.width]}
+                      onValueChange={(value) => updateSelectedNodeStyle({ width: value[0] })}
+                      min={140}
+                      max={360}
+                      step={10}
+                      className="flex-1"
+                    />
+                    <span className="text-[10px] text-slate-500 w-8 text-right">
+                      {selectedCardStyle.width}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-600">Card Height</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider
+                      value={[selectedCardStyle.height]}
+                      onValueChange={(value) => updateSelectedNodeStyle({ height: value[0] })}
+                      min={60}
+                      max={220}
+                      step={10}
+                      className="flex-1"
+                    />
+                    <span className="text-[10px] text-slate-500 w-8 text-right">
+                      {selectedCardStyle.height}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
         
         <div className="flex-1 overflow-hidden flex flex-col border-t border-slate-100 bg-slate-50/50">
           <BiblePanel />
@@ -206,6 +382,8 @@ const SermonMapContent = ({ note, onSave }) => {
           onDrop={onDrop}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
+          onNodeClick={(_, node) => setSelectedNodeId(node.id)}
+          onPaneClick={() => setSelectedNodeId(null)}
           nodeTypes={nodeTypes}
           fitView
           className="bg-[#FDFBF7]"
