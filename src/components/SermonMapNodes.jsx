@@ -6,7 +6,7 @@ import { Book } from 'lucide-react';
 // Common handle styles
 const handleStyle = { width: 8, height: 8, background: '#94a3b8' };
 
-const NodeInput = ({ value, nodeId, field = 'label', className, isTextArea = false }) => {
+const NodeInput = ({ value, nodeId, field = 'label', className, isTextArea = false, style }) => {
   const { setNodes } = useReactFlow();
 
   const handleChange = useCallback((evt) => {
@@ -33,6 +33,7 @@ const NodeInput = ({ value, nodeId, field = 'label', className, isTextArea = fal
         value={value}
         onChange={handleChange}
         placeholder="Type here..."
+        style={style}
       />
     );
   }
@@ -43,9 +44,21 @@ const NodeInput = ({ value, nodeId, field = 'label', className, isTextArea = fal
       value={value}
       onChange={handleChange}
       placeholder="Label"
+      style={style}
     />
   );
 };
+
+const resolveCardStyle = (dataStyle = {}, defaults = {}) => ({
+  fontFamily: 'serif',
+  fontWeight: 500,
+  textColor: '#334155',
+  cardColor: '#ffffff',
+  width: 180,
+  height: 80,
+  ...defaults,
+  ...dataStyle,
+});
 
 export const StartNode = memo(({ id, data, isConnectable }) => {
   return (
@@ -64,15 +77,31 @@ export const StartNode = memo(({ id, data, isConnectable }) => {
 });
 
 export const ProcessNode = memo(({ id, data, isConnectable }) => {
+  const cardStyle = resolveCardStyle(data?.style);
   return (
-    <div className="relative px-2 py-2 shadow-md rounded-md bg-white border-2 border-slate-200 w-[180px] min-h-[80px] flex items-center transition-all hover:shadow-lg">
+    <div
+      className="relative px-2 py-2 shadow-md rounded-md border-2 border-slate-200 flex items-center transition-all hover:shadow-lg"
+      style={{
+        width: cardStyle.width,
+        minHeight: cardStyle.height,
+        backgroundColor: cardStyle.cardColor,
+        color: cardStyle.textColor,
+        fontFamily: cardStyle.fontFamily,
+        fontWeight: cardStyle.fontWeight,
+      }}
+    >
       <Handle type="target" position={Position.Top} isConnectable={isConnectable} style={handleStyle} />
       <div className="w-full h-full">
         <NodeInput 
           nodeId={id} 
           value={data.label} 
           isTextArea 
-          className="font-serif font-medium text-slate-700 text-sm text-center min-h-[60px]"
+          className="text-sm text-center min-h-[60px]"
+          style={{
+            color: cardStyle.textColor,
+            fontFamily: cardStyle.fontFamily,
+            fontWeight: cardStyle.fontWeight,
+          }}
         />
       </div>
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} style={handleStyle} />
@@ -103,18 +132,39 @@ export const DecisionNode = memo(({ id, data, isConnectable }) => {
 });
 
 export const VerseNode = memo(({ id, data, isConnectable }) => {
+  const cardStyle = resolveCardStyle(data?.style, {
+    width: 288,
+    height: 120,
+    cardColor: '#fffdf5',
+    textColor: '#92400e',
+  });
   return (
-    <div className="relative w-72 bg-cream-50 border-l-4 border-amber-300 shadow-md rounded-r-md p-3 transition-all hover:shadow-lg bg-[#fffdf5]">
+    <div
+      className="relative border-l-4 border-amber-300 shadow-md rounded-r-md p-3 transition-all hover:shadow-lg"
+      style={{
+        width: cardStyle.width,
+        minHeight: cardStyle.height,
+        backgroundColor: cardStyle.cardColor,
+        color: cardStyle.textColor,
+        fontFamily: cardStyle.fontFamily,
+        fontWeight: cardStyle.fontWeight,
+      }}
+    >
       <Handle type="target" position={Position.Top} isConnectable={isConnectable} style={handleStyle} />
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} style={handleStyle} />
       
-      <div className="flex items-center gap-2 mb-2 text-amber-800 pb-2 border-b border-amber-100">
-        <Book className="w-3.5 h-3.5 flex-shrink-0" />
+      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-amber-100">
+        <Book className="w-3.5 h-3.5 flex-shrink-0" style={{ color: cardStyle.textColor }} />
         <NodeInput 
           nodeId={id} 
           value={data.ref} 
           field="ref"
-          className="text-xs font-bold uppercase tracking-wider text-left bg-transparent w-full"
+          className="text-xs uppercase tracking-wider text-left bg-transparent w-full"
+          style={{
+            color: cardStyle.textColor,
+            fontFamily: cardStyle.fontFamily,
+            fontWeight: cardStyle.fontWeight,
+          }}
         />
       </div>
       <div className="h-full">
@@ -123,7 +173,12 @@ export const VerseNode = memo(({ id, data, isConnectable }) => {
           value={data.text} 
           field="text"
           isTextArea
-          className="text-xs font-serif italic text-slate-600 leading-relaxed min-h-[80px]"
+          className="text-xs italic leading-relaxed min-h-[80px]"
+          style={{
+            color: cardStyle.textColor,
+            fontFamily: cardStyle.fontFamily,
+            fontWeight: cardStyle.fontWeight,
+          }}
         />
       </div>
       
