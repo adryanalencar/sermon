@@ -24,6 +24,8 @@ const BiblePanel = () => {
 
   const handleDragStart = (e, verse) => {
     e.dataTransfer.setData('application/json', JSON.stringify(verse));
+    e.dataTransfer.setData('application/reactflow', 'verse');
+    e.dataTransfer.setData('text/plain', verse.ref);
     e.dataTransfer.effectAllowed = 'copy';
   };
 

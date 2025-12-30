@@ -11,7 +11,6 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -42,6 +41,25 @@ const SermonMapContent = ({ note, onSave }) => {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
 
   const editableNodeTypes = useMemo(() => new Set(['process', 'verse']), []);
+  const pastelPalette = useMemo(
+    () => ({
+      text: [
+        { label: 'Slate', value: '#334155' },
+        { label: 'Rose', value: '#be4b5a' },
+        { label: 'Sage', value: '#3f6c62' },
+        { label: 'Indigo', value: '#4c5bd6' },
+        { label: 'Amber', value: '#9a6b1b' },
+      ],
+      card: [
+        { label: 'Ivory', value: '#fffdf5' },
+        { label: 'Blush', value: '#fde7ec' },
+        { label: 'Mint', value: '#e6f5f0' },
+        { label: 'Sky', value: '#e7f1ff' },
+        { label: 'Lavender', value: '#f1e9ff' },
+      ],
+    }),
+    []
+  );
 
   const getDefaultCardStyle = useCallback((type) => {
     if (type === 'verse') {
@@ -132,10 +150,12 @@ const SermonMapContent = ({ note, onSave }) => {
 
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const verseDataString = event.dataTransfer.getData('application/json');
-      const type = event.dataTransfer.getData('application/reactflow/type');
+      const dropType =
+        event.dataTransfer.getData('application/reactflow/type') ||
+        event.dataTransfer.getData('application/reactflow');
 
       // Check if the drop target is valid
-      if (!type && !verseDataString) return;
+      if (!dropType && !verseDataString) return;
 
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
@@ -166,10 +186,10 @@ const SermonMapContent = ({ note, onSave }) => {
         }
       } else {
         // Handle Shape Drop
-        newNode.type = type;
+        newNode.type = dropType;
         newNode.data = { 
-          label: type === 'start' ? 'Start' : type === 'decision' ? 'Question?' : 'New Point',
-          ...(type === 'process' ? { style: getDefaultCardStyle('process') } : {}),
+          label: dropType === 'start' ? 'Start' : dropType === 'decision' ? 'Question?' : 'New Point',
+          ...(dropType === 'process' ? { style: getDefaultCardStyle('process') } : {}),
         };
       }
 
@@ -307,21 +327,51 @@ const SermonMapContent = ({ note, onSave }) => {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label className="text-xs text-slate-600">Text Color</Label>
-                  <Input
-                    type="color"
+                  <Select
                     value={selectedCardStyle.textColor}
-                    onChange={(event) => updateSelectedNodeStyle({ textColor: event.target.value })}
-                    className="h-8 p-1"
-                  />
+                    onValueChange={(value) => updateSelectedNodeStyle({ textColor: value })}
+                  >
+                    <SelectTrigger className="h-8 bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pastelPalette.text.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="h-3 w-3 rounded-full border border-slate-200"
+                              style={{ backgroundColor: option.value }}
+                            />
+                            {option.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs text-slate-600">Card Color</Label>
-                  <Input
-                    type="color"
+                  <Select
                     value={selectedCardStyle.cardColor}
-                    onChange={(event) => updateSelectedNodeStyle({ cardColor: event.target.value })}
-                    className="h-8 p-1"
-                  />
+                    onValueChange={(value) => updateSelectedNodeStyle({ cardColor: value })}
+                  >
+                    <SelectTrigger className="h-8 bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pastelPalette.card.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <span className="flex items-center gap-2">
+                            <span
+                              className="h-3 w-3 rounded-full border border-slate-200"
+                              style={{ backgroundColor: option.value }}
+                            />
+                            {option.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
