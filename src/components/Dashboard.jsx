@@ -10,6 +10,58 @@ import SermonMapView from '@/components/SermonMapView';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Moon, Sun, Layout, Network, Presentation, GitBranch } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import dashboardData from '@/data/dashboard.json';
+
+const buildDashboardSeed = () => {
+  const folders = [];
+  const notes = [];
+  const folderMap = new Map();
+  const exportedAt = dashboardData.meta?.exportedAt
+    ? new Date(dashboardData.meta.exportedAt).toISOString()
+    : new Date().toISOString();
+
+  const ensureFolder = (segments) => {
+    let parentId = null;
+    let currentPath = '';
+
+    segments.forEach((segment, index) => {
+      currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+
+      if (!folderMap.has(currentPath)) {
+        const folder = {
+          id: currentPath,
+          name: segment,
+          parentId,
+          expanded: index === 0,
+        };
+        folders.push(folder);
+        folderMap.set(currentPath, folder.id);
+      }
+
+      parentId = folderMap.get(currentPath);
+    });
+
+    return parentId;
+  };
+
+  dashboardData.data?.forEach((entry) => {
+    const pathSegments = entry.path ? entry.path.split('/').filter(Boolean) : [];
+    const folderSegments = pathSegments.slice(0, -1);
+    const folderId = folderSegments.length > 0 ? ensureFolder(folderSegments) : null;
+    const noteId = entry.path || entry.title || `${Date.now()}-${notes.length}`;
+
+    notes.push({
+      id: noteId,
+      title: entry.title || 'Untitled Note',
+      content: entry.content || '',
+      folderId,
+      createdAt: exportedAt,
+      updatedAt: exportedAt,
+    });
+  });
+
+  return { folders, notes };
+};
 
 const Dashboard = () => {
   const [darkMode, setDarkMode] = useState(false); // Default to light mode for pastel theme
@@ -23,36 +75,15 @@ const Dashboard = () => {
     const savedFolders = localStorage.getItem('pulpitgraph_folders');
     const savedNotes = localStorage.getItem('pulpitgraph_notes');
     
-    if (savedFolders) {
+    if (savedFolders && savedNotes) {
       setFolders(JSON.parse(savedFolders));
-    } else {
-      // Initialize with default folder structure
-      const defaultFolders = [
-        { id: '1', name: 'Sermons', parentId: null, expanded: true },
-        { id: '2', name: 'Bible Studies', parentId: null, expanded: true },
-        { id: '3', name: 'Devotionals', parentId: null, expanded: false },
-        { id: '4', name: 'Series: Genesis', parentId: '1', expanded: false },
-      ];
-      setFolders(defaultFolders);
-      localStorage.setItem('pulpitgraph_folders', JSON.stringify(defaultFolders));
-    }
-    
-    if (savedNotes) {
       setNotes(JSON.parse(savedNotes));
     } else {
-      // Initialize with sample notes
-      const defaultNotes = [
-        {
-          id: '1',
-          title: 'The Grace of God',
-          content: '# The Grace of God\n\nIntroduction to the sermon on Grace.\n\n## Key Points\n1. Grace is unmerited favor\n2. Grace empowers us\n\n> "For by grace you have been saved through faith..." - Ephesians 2:8\n',
-          folderId: '1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ];
-      setNotes(defaultNotes);
-      localStorage.setItem('pulpitgraph_notes', JSON.stringify(defaultNotes));
+      const { folders: seededFolders, notes: seededNotes } = buildDashboardSeed();
+      setFolders(seededFolders);
+      setNotes(seededNotes);
+      localStorage.setItem('pulpitgraph_folders', JSON.stringify(seededFolders));
+      localStorage.setItem('pulpitgraph_notes', JSON.stringify(seededNotes));
     }
 
     // Apply dark mode
