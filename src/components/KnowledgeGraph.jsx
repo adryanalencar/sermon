@@ -5,6 +5,14 @@ import { FileText, Link as LinkIcon } from 'lucide-react';
 
 const getNotePath = (note) => note.path || note.id || note.title || '';
 
+const getNodeColor = (note) => {
+  const path = getNotePath(note).toLowerCase();
+  if (path.includes('antigo')) return '#8a9a5b';
+  if (path.includes('novo')) return '#5d7c9c';
+  if (path.includes('tema')) return '#d4a373';
+  return '#7f8c8d';
+};
+
 const buildInvertedIndex = (notes) => {
   const index = new Map();
   notes.forEach((note) => {
@@ -62,15 +70,16 @@ const extractWikiLinks = (content) => {
 };
 
 const KnowledgeGraph = ({ notes, onNoteSelect }) => {
-  const canvasRef = useRef(null);
   const [nodes, setNodes] = useState([]);
   const [links, setLinks] = useState([]);
-  const [hoveredNode, setHoveredNode] = useState(null);
+  const graphRef = useRef(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     const graphNodes = notes.map((note) => ({
       id: note.id,
       title: note.title,
+      color: getNodeColor(note),
       x: Math.random() * 600 + 100,
       y: Math.random() * 400 + 100,
       vx: 0,
@@ -114,142 +123,56 @@ const KnowledgeGraph = ({ notes, onNoteSelect }) => {
   }, [notes]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
+    const ForceGraph = window.ForceGraph;
+    if (!ForceGraph) return;
 
-    // Simple force simulation
-    const animate = () => {
-      ctx.clearRect(0, 0, width, height);
-
-      // Apply forces
-      nodes.forEach(node => {
-        // Centering force
-        const centerX = width / 2;
-        const centerY = height / 2;
-        node.vx += (centerX - node.x) * 0.001;
-        node.vy += (centerY - node.y) * 0.001;
-
-        // Link forces
-        links.forEach(link => {
-          if (link.source === node.id) {
-            const target = nodes.find(n => n.id === link.target);
-            if (target) {
-              const dx = target.x - node.x;
-              const dy = target.y - node.y;
-              const distance = Math.sqrt(dx * dx + dy * dy);
-              const force = (distance - 150) * 0.01;
-              node.vx += (dx / distance) * force;
-              node.vy += (dy / distance) * force;
-            }
-          }
+    if (!graphRef.current) {
+      graphRef.current = ForceGraph()(container)
+        .backgroundColor('#ffffff')
+        .nodeRelSize(5)
+        .nodeLabel('title')
+        .nodeColor((node) => node.color || '#5d7c9c')
+        .linkColor(() => '#a0a0a0')
+        .linkWidth(1.5)
+        .linkDirectionalParticles(2)
+        .linkDirectionalParticleWidth(2)
+        .onNodeClick((node) => {
+          const note = notes.find((item) => item.id === node.id);
+          if (note) onNoteSelect(note);
+          graphRef.current.centerAt(node.x, node.y, 1000);
+          graphRef.current.zoom(3, 1000);
         });
 
-        // Repulsion between nodes
-        nodes.forEach(other => {
-          if (other.id !== node.id) {
-            const dx = node.x - other.x;
-            const dy = node.y - other.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < 100) {
-              const force = (100 - distance) * 0.02;
-              node.vx += (dx / distance) * force;
-              node.vy += (dy / distance) * force;
-            }
-          }
-        });
+      graphRef.current.d3Force('charge').strength(-150);
+    }
 
-        // Apply velocity with damping
-        node.vx *= 0.9;
-        node.vy *= 0.9;
-        node.x += node.vx;
-        node.y += node.vy;
-
-        // Boundary constraints
-        node.x = Math.max(50, Math.min(width - 50, node.x));
-        node.y = Math.max(50, Math.min(height - 50, node.y));
-      });
-
-      // Draw links
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
-      ctx.lineWidth = 1.5;
-      links.forEach(link => {
-        const source = nodes.find(n => n.id === link.source);
-        const target = nodes.find(n => n.id === link.target);
-        if (source && target) {
-          ctx.beginPath();
-          ctx.moveTo(source.x, source.y);
-          ctx.lineTo(target.x, target.y);
-          ctx.stroke();
-        }
-      });
-
-      // Draw nodes
-      nodes.forEach(node => {
-        const isHovered = hoveredNode === node.id;
-        
-        // Node circle
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, isHovered ? 24 : 20, 0, Math.PI * 2);
-        ctx.fillStyle = isHovered ? '#3b82f6' : '#60a5fa';
-        ctx.fill();
-        ctx.strokeStyle = '#1e40af';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Node label
-        ctx.fillStyle = '#1e293b';
-        ctx.font = '12px serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(
-          node.title.length > 15 ? node.title.substring(0, 12) + '...' : node.title,
-          node.x,
-          node.y + 35
-        );
-      });
-
-      requestAnimationFrame(animate);
+    const handleResize = () => {
+      if (!graphRef.current) return;
+      graphRef.current.width(container.offsetWidth);
+      graphRef.current.height(container.offsetHeight);
+      graphRef.current.zoomToFit(500);
     };
 
-    animate();
-  }, [nodes, links, hoveredNode]);
+    handleResize();
 
-  const handleCanvasClick = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
 
-    const clickedNode = nodes.find(node => {
-      const dx = x - node.x;
-      const dy = y - node.y;
-      return Math.sqrt(dx * dx + dy * dy) < 20;
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [nodes, links, notes, onNoteSelect]);
+
+  useEffect(() => {
+    if (!graphRef.current) return;
+    graphRef.current.graphData({
+      nodes: nodes.map((node) => ({ ...node })),
+      links: links.map((link) => ({ ...link })),
     });
-
-    if (clickedNode) {
-      const note = notes.find(n => n.id === clickedNode.id);
-      if (note) onNoteSelect(note);
-    }
-  };
-
-  const handleCanvasMouseMove = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const hoveredNode = nodes.find(node => {
-      const dx = x - node.x;
-      const dy = y - node.y;
-      return Math.sqrt(dx * dx + dy * dy) < 20;
-    });
-
-    setHoveredNode(hoveredNode ? hoveredNode.id : null);
-    canvas.style.cursor = hoveredNode ? 'pointer' : 'default';
-  };
+  }, [nodes, links]);
 
   return (
     <div className="h-full flex flex-col">
@@ -269,14 +192,7 @@ const KnowledgeGraph = ({ notes, onNoteSelect }) => {
           transition={{ duration: 0.5 }}
           className="relative bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden"
         >
-          <canvas
-            ref={canvasRef}
-            width={800}
-            height={600}
-            onClick={handleCanvasClick}
-            onMouseMove={handleCanvasMouseMove}
-            className="block"
-          />
+          <div ref={containerRef} className="w-[800px] h-[600px]" />
           
           {notes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-slate-800">
