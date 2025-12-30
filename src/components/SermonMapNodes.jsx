@@ -1,10 +1,35 @@
-
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useEffect, useRef } from 'react';
 import { Handle, Position, useReactFlow } from 'reactflow';
 import { Book } from 'lucide-react';
 
 // Common handle styles
 const handleStyle = { width: 8, height: 8, background: '#94a3b8' };
+
+// --- NOVO COMPONENTE DE INPUT QUE CRESCE ---
+const AutoResizingTextarea = ({ value, onChange, className, style, placeholder }) => {
+  const textareaRef = useRef(null);
+
+  // Ajusta a altura sempre que o valor mudar
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto'; // Reseta para calcular corretamente
+      textarea.style.height = `${textarea.scrollHeight}px`; // Define a nova altura
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      className={`nodrag bg-transparent outline-none resize-none w-full overflow-hidden block ${className}`}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      style={style}
+      rows={1}
+    />
+  );
+};
 
 const NodeInput = ({ value, nodeId, field = 'label', className, isTextArea = false, style }) => {
   const { setNodes } = useReactFlow();
@@ -28,8 +53,8 @@ const NodeInput = ({ value, nodeId, field = 'label', className, isTextArea = fal
 
   if (isTextArea) {
     return (
-      <textarea
-        className={`nodrag bg-transparent outline-none resize-none w-full h-full overflow-hidden font-inherit ${className}`}
+      <AutoResizingTextarea
+        className={className}
         value={value}
         onChange={handleChange}
         placeholder="Type here..."
@@ -52,6 +77,7 @@ const NodeInput = ({ value, nodeId, field = 'label', className, isTextArea = fal
 const resolveCardStyle = (dataStyle = {}, defaults = {}) => ({
   fontFamily: 'serif',
   fontWeight: 500,
+  fontSize: 14,
   textColor: '#334155',
   cardColor: '#ffffff',
   width: 180,
@@ -61,14 +87,34 @@ const resolveCardStyle = (dataStyle = {}, defaults = {}) => ({
 });
 
 export const StartNode = memo(({ id, data, isConnectable }) => {
+  const cardStyle = resolveCardStyle(data?.style, {
+    width: 80,
+    height: 80,
+    cardColor: '#dcfce7',
+    textColor: '#166534'
+  });
+
   return (
-    <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-green-100 border-2 border-green-300 shadow-sm transition-all hover:shadow-md">
+    <div 
+      className="relative flex items-center justify-center rounded-full border-2 shadow-sm transition-all hover:shadow-md"
+      style={{
+        width: cardStyle.width,
+        height: cardStyle.height,
+        backgroundColor: cardStyle.cardColor,
+        borderColor: cardStyle.textColor,
+        color: cardStyle.textColor,
+        fontFamily: cardStyle.fontFamily,
+        fontWeight: cardStyle.fontWeight,
+        fontSize: `${cardStyle.fontSize}px`,
+      }}
+    >
       <Handle type="target" position={Position.Top} isConnectable={isConnectable} style={handleStyle} />
       <div className="p-2 w-full flex items-center justify-center">
         <NodeInput 
           nodeId={id} 
           value={data.label} 
-          className="text-xs font-serif font-bold text-green-800 placeholder:text-green-800/50"
+          className="font-bold placeholder:opacity-50 text-center"
+          style={{ fontSize: 'inherit' }} 
         />
       </div>
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} style={handleStyle} />
@@ -78,29 +124,33 @@ export const StartNode = memo(({ id, data, isConnectable }) => {
 
 export const ProcessNode = memo(({ id, data, isConnectable }) => {
   const cardStyle = resolveCardStyle(data?.style);
+  
   return (
     <div
-      className="relative px-2 py-2 shadow-md rounded-md border-2 border-slate-200 flex items-center transition-all hover:shadow-lg"
+      className="relative px-2 py-2 shadow-md rounded-md border-2 border-slate-200 flex items-center flex-col justify-center transition-all hover:shadow-lg"
       style={{
         width: cardStyle.width,
-        minHeight: cardStyle.height,
+        minHeight: cardStyle.height, // Alterado para minHeight
+        height: 'auto',              // Permite crescer
         backgroundColor: cardStyle.cardColor,
         color: cardStyle.textColor,
         fontFamily: cardStyle.fontFamily,
         fontWeight: cardStyle.fontWeight,
+        fontSize: `${cardStyle.fontSize}px`,
       }}
     >
       <Handle type="target" position={Position.Top} isConnectable={isConnectable} style={handleStyle} />
-      <div className="w-full h-full">
+      <div className="w-full flex items-center justify-center my-auto">
         <NodeInput 
           nodeId={id} 
           value={data.label} 
           isTextArea 
-          className="text-sm text-center min-h-[60px]"
+          className="text-center"
           style={{
-            color: cardStyle.textColor,
-            fontFamily: cardStyle.fontFamily,
-            fontWeight: cardStyle.fontWeight,
+            color: 'inherit',
+            fontSize: 'inherit',
+            fontFamily: 'inherit',
+            fontWeight: 'inherit',
           }}
         />
       </div>
@@ -112,17 +162,45 @@ export const ProcessNode = memo(({ id, data, isConnectable }) => {
 });
 
 export const DecisionNode = memo(({ id, data, isConnectable }) => {
+  const cardStyle = resolveCardStyle(data?.style, {
+    width: 140,
+    height: 140,
+    cardColor: '#eff6ff',
+    textColor: '#1e40af'
+  });
+
   return (
-    <div className="relative w-36 h-36 flex items-center justify-center group">
-      <div className="absolute inset-0 bg-blue-50 border-2 border-blue-200 rotate-45 rounded-sm shadow-sm transition-all group-hover:border-blue-300 group-hover:shadow-md"></div>
-      <div className="relative z-10 p-2 w-[100px] h-[100px] flex items-center justify-center">
+    <div 
+      className="relative flex items-center justify-center group"
+      style={{ width: cardStyle.width, height: cardStyle.height }}
+    >
+      <div 
+        className="absolute inset-0 border-2 rotate-45 rounded-sm shadow-sm transition-all group-hover:shadow-md"
+        style={{
+          backgroundColor: cardStyle.cardColor,
+          borderColor: cardStyle.textColor,
+          opacity: 0.9
+        }}
+      ></div>
+      
+      <div 
+        className="relative z-10 p-4 flex items-center justify-center w-full h-full"
+        style={{
+          fontFamily: cardStyle.fontFamily,
+          fontWeight: cardStyle.fontWeight,
+          fontSize: `${cardStyle.fontSize}px`,
+          color: cardStyle.textColor
+        }}
+      >
         <NodeInput 
           nodeId={id} 
           value={data.label} 
           isTextArea
-          className="text-xs font-serif font-bold text-blue-800 text-center placeholder:text-blue-800/50"
+          className="font-bold text-center placeholder:opacity-50"
+          style={{ fontSize: 'inherit', color: 'inherit' }}
         />
       </div>
+
       <Handle type="target" position={Position.Top} isConnectable={isConnectable} style={{ ...handleStyle, top: -4 }} />
       <Handle type="source" position={Position.Right} isConnectable={isConnectable} style={{ ...handleStyle, right: -4 }} />
       <Handle type="source" position={Position.Bottom} isConnectable={isConnectable} style={{ ...handleStyle, bottom: -4 }} />
@@ -137,47 +215,62 @@ export const VerseNode = memo(({ id, data, isConnectable }) => {
     height: 120,
     cardColor: '#fffdf5',
     textColor: '#92400e',
+    fontSize: 14
   });
+
+  let refText = data.ref;
+  let bodyText = data.text;
+
+  if (!refText && !bodyText && data.label) {
+    const parts = data.label.split('\n');
+    refText = parts[0];
+    bodyText = parts.slice(1).join('\n');
+  }
+
   return (
     <div
-      className="relative border-l-4 border-amber-300 shadow-md rounded-r-md p-3 transition-all hover:shadow-lg"
+      // 1. Reduzi o padding de p-3 para p-2
+      className="relative border-l-4 border-amber-300 shadow-md rounded-r-md p-2 transition-all hover:shadow-lg flex flex-col"
       style={{
         width: cardStyle.width,
-        minHeight: cardStyle.height,
+        minHeight: cardStyle.height, // 2. Usa minHeight
+        height: 'auto',              // 3. Permite crescer
         backgroundColor: cardStyle.cardColor,
         color: cardStyle.textColor,
         fontFamily: cardStyle.fontFamily,
         fontWeight: cardStyle.fontWeight,
+        fontSize: `${cardStyle.fontSize}px`,
       }}
     >
       <Handle type="target" position={Position.Top} isConnectable={isConnectable} style={handleStyle} />
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} style={handleStyle} />
       
-      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-amber-100">
-        <Book className="w-3.5 h-3.5 flex-shrink-0" style={{ color: cardStyle.textColor }} />
+      {/* 4. Reduzi margens do cabeçalho (mb-2 pb-2 -> mb-1 pb-1) */}
+      <div className="flex items-center gap-2 mb-1 pb-1 border-b border-amber-100/50 shrink-0">
+        <Book className="w-4 h-4 flex-shrink-0 opacity-70" />
         <NodeInput 
           nodeId={id} 
-          value={data.ref} 
+          value={refText} 
           field="ref"
-          className="text-xs uppercase tracking-wider text-left bg-transparent w-full"
+          className="uppercase tracking-wider text-left bg-transparent w-full font-bold"
           style={{
-            color: cardStyle.textColor,
-            fontFamily: cardStyle.fontFamily,
-            fontWeight: cardStyle.fontWeight,
+            fontSize: '0.9em',
+            color: 'inherit'
           }}
         />
       </div>
-      <div className="h-full">
+      
+      {/* 5. Área de texto flexível */}
+      <div className="flex-1 min-h-[40px]">
         <NodeInput 
           nodeId={id} 
-          value={data.text} 
+          value={bodyText} 
           field="text"
           isTextArea
-          className="text-xs italic leading-relaxed min-h-[80px]"
+          className="italic leading-relaxed"
           style={{
-            color: cardStyle.textColor,
-            fontFamily: cardStyle.fontFamily,
-            fontWeight: cardStyle.fontWeight,
+            fontSize: 'inherit',
+            color: 'inherit'
           }}
         />
       </div>

@@ -91,22 +91,7 @@ const EditorView = ({ note, onUpdateNote, onDeleteNote, onNoteSelect }) => {
             className="border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col shadow-xl z-10"
           >
             <Tabs defaultValue="bible" className="flex-1 flex flex-col">
-              <div className="px-2 pt-2 border-b border-slate-100 dark:border-slate-700">
-                <TabsList className="w-full grid grid-cols-2">
-                  <TabsTrigger value="bible" className="text-xs">Bible Database</TabsTrigger>
-                  <TabsTrigger value="flowchart" className="text-xs">Sermon Map</TabsTrigger>
-                </TabsList>
-              </div>
-              
-              <TabsContent value="bible" className="flex-1 mt-0 overflow-hidden">
-                <BiblePanel />
-              </TabsContent>
-              
-              <TabsContent value="flowchart" className="flex-1 mt-0 overflow-hidden relative">
-                 <FlowchartEditor 
-                   noteId={note.id} 
-                 />
-              </TabsContent>
+              <BiblePanel />
             </Tabs>
           </motion.div>
         )}
