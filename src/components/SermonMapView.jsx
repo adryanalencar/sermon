@@ -44,18 +44,23 @@ const SermonMapContent = ({ note, onSave }) => {
   const pastelPalette = useMemo(
     () => ({
       text: [
-        { label: 'Slate', value: '#334155' },
-        { label: 'Rose', value: '#be4b5a' },
-        { label: 'Sage', value: '#3f6c62' },
-        { label: 'Indigo', value: '#4c5bd6' },
-        { label: 'Amber', value: '#9a6b1b' },
+        // Fontes com cores "suaves" mas escuras o suficiente para ler no neon
+        { label: 'Black', value: '#000' },
+        { label: 'White', value: '#fff' },
+        { label: 'Ink Slate', value: '#334155' },    // Cinza Chumbo
+        { label: 'Deep Coral', value: '#9f1239' },   // Coral Escuro
+        { label: 'Deep Teal', value: '#115e59' },    // Verde Petróleo
+        { label: 'Deep Indigo', value: '#3730a3' },  // Indigo Profundo
+        { label: 'Cocoa', value: '#854d0e' },        // Marrom Cacau
       ],
       card: [
-        { label: 'Ivory', value: '#fffdf5' },
-        { label: 'Blush', value: '#fde7ec' },
-        { label: 'Mint', value: '#e6f5f0' },
-        { label: 'Sky', value: '#e7f1ff' },
-        { label: 'Lavender', value: '#f1e9ff' },
+        { label: 'Black', value: '#000' },
+        { label: 'White', value: '#fff' },
+        { label: 'Highlighter Yellow', value: '#ffff00' }, // Amarelo Puro
+        { label: 'Fluorescent Pink', value: '#ff00ff' },   // Magenta Puro
+        { label: 'Lime Punch', value: '#ccff00' },         // Verde Limão Puro
+        { label: 'Cyan Pop', value: '#00ffff' },           // Ciano Puro
+        { label: 'Electric Violet', value: '#d580ff' },    // Violeta Elétrico
       ],
     }),
     []
@@ -382,7 +387,7 @@ const SermonMapContent = ({ note, onSave }) => {
                     <Slider
                       value={[selectedCardStyle.width]}
                       onValueChange={(value) => updateSelectedNodeStyle({ width: value[0] })}
-                      min={140}
+                      min={10}
                       max={360}
                       step={10}
                       className="flex-1"
@@ -398,7 +403,7 @@ const SermonMapContent = ({ note, onSave }) => {
                     <Slider
                       value={[selectedCardStyle.height]}
                       onValueChange={(value) => updateSelectedNodeStyle({ height: value[0] })}
-                      min={60}
+                      min={10}
                       max={220}
                       step={10}
                       className="flex-1"
