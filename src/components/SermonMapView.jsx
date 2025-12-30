@@ -243,6 +243,17 @@ const SermonMapContent = ({ note, onSave }) => {
     );
   };
 
+  const removeSelectedNode = () => {
+    if (!selectedNodeId) return;
+    setNodes((nds) => nds.filter((node) => node.id !== selectedNodeId));
+    setEdges((eds) =>
+      eds.filter(
+        (edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId
+      )
+    );
+    setSelectedNodeId(null);
+  };
+
   return (
     <div className="h-full flex flex-col md:flex-row bg-[#FDFBF7]">
       {/* Sidebar Tools */}
@@ -279,144 +290,6 @@ const SermonMapContent = ({ note, onSave }) => {
             <MousePointer2 className="w-3 h-3" /> Drag shapes to canvas
           </p>
         </div>
-
-        <div className="p-4 border-b border-slate-100">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Card Editor</h3>
-          {!selectedNode && (
-            <p className="text-xs text-slate-400">
-              Select a card in the flow to customize its style.
-            </p>
-          )}
-          {selectedNode && !editableNodeTypes.has(selectedNode.type) && (
-            <p className="text-xs text-slate-400">
-              Card styling is available for process and verse cards.
-            </p>
-          )}
-          {selectedNode && editableNodeTypes.has(selectedNode.type) && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-600">Font Style</Label>
-                <Select
-                  value={selectedCardStyle.fontFamily}
-                  onValueChange={(value) => updateSelectedNodeStyle({ fontFamily: value })}
-                >
-                  <SelectTrigger className="h-8 bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="serif">Serif</SelectItem>
-                    <SelectItem value="sans-serif">Sans Serif</SelectItem>
-                    <SelectItem value="monospace">Monospace</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs text-slate-600">Font Weight</Label>
-                <Select
-                  value={`${selectedCardStyle.fontWeight}`}
-                  onValueChange={(value) => updateSelectedNodeStyle({ fontWeight: Number(value) })}
-                >
-                  <SelectTrigger className="h-8 bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="400">Regular</SelectItem>
-                    <SelectItem value="500">Medium</SelectItem>
-                    <SelectItem value="600">Semibold</SelectItem>
-                    <SelectItem value="700">Bold</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-xs text-slate-600">Text Color</Label>
-                  <Select
-                    value={selectedCardStyle.textColor}
-                    onValueChange={(value) => updateSelectedNodeStyle({ textColor: value })}
-                  >
-                    <SelectTrigger className="h-8 bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pastelPalette.text.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <span className="flex items-center gap-2">
-                            <span
-                              className="h-3 w-3 rounded-full border border-slate-200"
-                              style={{ backgroundColor: option.value }}
-                            />
-                            {option.label}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs text-slate-600">Card Color</Label>
-                  <Select
-                    value={selectedCardStyle.cardColor}
-                    onValueChange={(value) => updateSelectedNodeStyle({ cardColor: value })}
-                  >
-                    <SelectTrigger className="h-8 bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pastelPalette.card.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <span className="flex items-center gap-2">
-                            <span
-                              className="h-3 w-3 rounded-full border border-slate-200"
-                              style={{ backgroundColor: option.value }}
-                            />
-                            {option.label}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs text-slate-600">Card Width</Label>
-                  <div className="flex items-center gap-2">
-                    <Slider
-                      value={[selectedCardStyle.width]}
-                      onValueChange={(value) => updateSelectedNodeStyle({ width: value[0] })}
-                      min={10}
-                      max={360}
-                      step={10}
-                      className="flex-1"
-                    />
-                    <span className="text-[10px] text-slate-500 w-8 text-right">
-                      {selectedCardStyle.width}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-slate-600">Card Height</Label>
-                  <div className="flex items-center gap-2">
-                    <Slider
-                      value={[selectedCardStyle.height]}
-                      onValueChange={(value) => updateSelectedNodeStyle({ height: value[0] })}
-                      min={10}
-                      max={220}
-                      step={10}
-                      className="flex-1"
-                    />
-                    <span className="text-[10px] text-slate-500 w-8 text-right">
-                      {selectedCardStyle.height}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
         
         <div className="flex-1 overflow-hidden flex flex-col border-t border-slate-100 bg-slate-50/50">
           <BiblePanel />
@@ -426,6 +299,158 @@ const SermonMapContent = ({ note, onSave }) => {
       {/* Main Canvas */}
       <div className="flex-1 h-[70vh] md:h-full relative transition-colors duration-200" ref={reactFlowWrapper}>
         <div className={`absolute inset-0 pointer-events-none z-10 bg-blue-50/30 transition-opacity duration-200 ${isDragOver ? 'opacity-100' : 'opacity-0'}`} />
+        <div className="absolute right-4 top-20 w-64 max-h-[calc(100%-2rem)] overflow-y-auto rounded-lg border border-slate-200 bg-white/95 shadow-lg backdrop-blur-sm z-20">
+          <div className="p-4 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Card Editor</h3>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={removeSelectedNode}
+                disabled={!selectedNode}
+                className="h-7 px-2 text-[10px]"
+              >
+                Remove
+              </Button>
+            </div>
+          </div>
+          <div className="p-4 space-y-4">
+            {!selectedNode && (
+              <p className="text-xs text-slate-400">
+                Select a card in the flow to customize its style.
+              </p>
+            )}
+            {selectedNode && !editableNodeTypes.has(selectedNode.type) && (
+              <p className="text-xs text-slate-400">
+                Card styling is available for process and verse cards.
+              </p>
+            )}
+            {selectedNode && editableNodeTypes.has(selectedNode.type) && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-600">Font Style</Label>
+                  <Select
+                    value={selectedCardStyle.fontFamily}
+                    onValueChange={(value) => updateSelectedNodeStyle({ fontFamily: value })}
+                  >
+                    <SelectTrigger className="h-8 bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="serif">Serif</SelectItem>
+                      <SelectItem value="sans-serif">Sans Serif</SelectItem>
+                      <SelectItem value="monospace">Monospace</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-600">Font Weight</Label>
+                  <Select
+                    value={`${selectedCardStyle.fontWeight}`}
+                    onValueChange={(value) => updateSelectedNodeStyle({ fontWeight: Number(value) })}
+                  >
+                    <SelectTrigger className="h-8 bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="400">Regular</SelectItem>
+                      <SelectItem value="500">Medium</SelectItem>
+                      <SelectItem value="600">Semibold</SelectItem>
+                      <SelectItem value="700">Bold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-600">Text Color</Label>
+                    <Select
+                      value={selectedCardStyle.textColor}
+                      onValueChange={(value) => updateSelectedNodeStyle({ textColor: value })}
+                    >
+                      <SelectTrigger className="h-8 bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pastelPalette.text.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="h-3 w-3 rounded-full border border-slate-200"
+                                style={{ backgroundColor: option.value }}
+                              />
+                              {option.label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-600">Card Color</Label>
+                    <Select
+                      value={selectedCardStyle.cardColor}
+                      onValueChange={(value) => updateSelectedNodeStyle({ cardColor: value })}
+                    >
+                      <SelectTrigger className="h-8 bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pastelPalette.card.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="h-3 w-3 rounded-full border border-slate-200"
+                                style={{ backgroundColor: option.value }}
+                              />
+                              {option.label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-slate-600">Card Width</Label>
+                    <div className="flex items-center gap-2">
+                      <Slider
+                        value={[selectedCardStyle.width]}
+                        onValueChange={(value) => updateSelectedNodeStyle({ width: value[0] })}
+                        min={10}
+                        max={360}
+                        step={10}
+                        className="flex-1"
+                      />
+                      <span className="text-[10px] text-slate-500 w-8 text-right">
+                        {selectedCardStyle.width}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-600">Card Height</Label>
+                    <div className="flex items-center gap-2">
+                      <Slider
+                        value={[selectedCardStyle.height]}
+                        onValueChange={(value) => updateSelectedNodeStyle({ height: value[0] })}
+                        min={10}
+                        max={220}
+                        step={10}
+                        className="flex-1"
+                      />
+                      <span className="text-[10px] text-slate-500 w-8 text-right">
+                        {selectedCardStyle.height}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
         
         <ReactFlow
           nodes={nodes}
